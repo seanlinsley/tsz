@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+edition = "2024"
 members = ["tsz-compress", "tsz-macro", "tsz-bench"]
 
 [profile.dev.package."*"]

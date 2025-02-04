@@ -680,11 +680,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 let segment = path.segments.first().unwrap();
                 let ident = segment.ident.clone();
                 match ident.to_string().as_str() {
-                    "i8" => quote! { write_i8_bits },
-                    "i16" => quote! { write_i16_bits },
-                    "i32" => quote! { write_i32_bits },
-                    "i64" => quote! { write_i64_bits },
-                    "i128" => quote! { write_i128_bits },
+                    "i8" => quote! { ::tsz_compress::prelude::write_i8_bits },
+                    "i16" => quote! { ::tsz_compress::prelude::write_i16_bits },
+                    "i32" => quote! { ::tsz_compress::prelude::write_i32_bits },
+                    "i64" => quote! { ::tsz_compress::prelude::write_i64_bits },
+                    "i128" => quote! { ::tsz_compress::prelude::write_i128_bits },
                     _ => panic!("Unsupported type"),
                 }
             }
@@ -698,11 +698,11 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 let segment = path.segments.first().unwrap();
                 let ident = segment.ident.clone();
                 match ident.to_string().as_str() {
-                    "i8" => quote! { write_i16_bits },
-                    "i16" => quote! { write_i32_bits },
-                    "i32" => quote! { write_i64_bits },
-                    "i64" => quote! { write_i128_bits },
-                    "i128" => quote! { write_i128_bits },
+                    "i8" => quote! { ::tsz_compress::prelude::write_i16_bits },
+                    "i16" => quote! { ::tsz_compress::prelude::write_i32_bits },
+                    "i32" => quote! { ::tsz_compress::prelude::write_i64_bits },
+                    "i64" => quote! { ::tsz_compress::prelude::write_i128_bits },
+                    "i128" => quote! { ::tsz_compress::prelude::write_i128_bits },
                     _ => panic!("Unsupported type"),
                 }
             }
@@ -851,7 +851,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                 // SAFETY: The number of rows may be more than 2^32, but the decompressor will
                 //         reserve at most 2^32 rows.
                 let mut rows = ::tsz_compress::prelude::halfvec::HalfVec::new(8);
-                write_i32_bits(&mut rows, self.rows as u32 as i32);
+                ::tsz_compress::prelude::write_i32_bits(&mut rows, self.rows as u32 as i32);
 
                 // Create an iterator over the words to be written
                 let rows = Some(rows);
@@ -887,6 +887,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
             use super::*;
             mod private {
                 use super::*;
+                use ::tsz_compress::prelude::*;
                 /// A Compressor type implementing TszCompressV2.
                 #[derive(Debug)]
                 pub struct #compressor_ident {
@@ -900,7 +901,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     rows: usize,
                 }
 
-                impl TszCompressV2 for #compressor_ident {
+                impl ::tsz_compress::prelude::TszCompressV2 for #compressor_ident {
                     type T = #ident;
 
                     /// Sets up two compression queues: one for delta compression and one for delta-delta compression,
@@ -1035,7 +1036,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                     ///
                     /// Leaving the intermediate buffers in a reserved, cleared state.
                     ///
-                    fn finish_into(&mut self, output_bytes: &mut ::alloc::vec::Vec<u8>) {
+                    fn finish_into(&mut self, output_bytes: &mut Vec<u8>) {
                         // Only use one encoding mechanism
                         #(
                             if let (Some(delta_buffer), Some(delta_delta_buffer)) = (&self.#col_delta_buf_idents, &self.#col_delta_delta_buf_idents) {
@@ -1082,7 +1083,7 @@ pub fn derive_compressv2(tokens: TokenStream) -> TokenStream {
                         // SAFETY: The number of rows may be more than 2^32, but the decompressor will
                         //         reserve at most 2^32 rows.
                         let mut rows = ::tsz_compress::prelude::halfvec::HalfVec::new(8);
-                        write_i32_bits(&mut rows, self.rows as u32 as i32);
+                        ::tsz_compress::prelude::write_i32_bits(&mut rows, self.rows as u32 as i32);
 
                         // Create an iterator over the words to be written
                         let rows = Some(rows);
@@ -1159,11 +1160,12 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
             use super::*;
             mod private {
                 use super::*;
+                use ::tsz_compress::prelude::*;
 
                 /// A Decompressor type implementing TszDecompressV2.
                 #[derive(Debug)]
                 pub struct #decompressor_ident {
-                    #( #col_vec_idents: ::alloc::vec::Vec<#col_tys>, )*
+                    #( #col_vec_idents: Vec<#col_tys>, )*
                 }
 
                 impl #decompressor_ident {
@@ -1175,13 +1177,13 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                     )*
                 }
 
-                impl TszDecompressV2 for #decompressor_ident {
+                impl ::tsz_compress::prelude::TszDecompressV2 for #decompressor_ident {
                     type T = #ident;
 
                     /// Initialize a decompressor with a vector for each column.
                     fn new() -> Self {
                         #decompressor_ident {
-                            #( #col_vec_idents: ::alloc::vec::Vec::new(), )*
+                            #( #col_vec_idents: Vec::new(), )*
                         }
                     }
 
@@ -1241,11 +1243,11 @@ pub fn derive_decompressv2(tokens: TokenStream) -> TokenStream {
                     }
 
                     /// Rotate the columns into rows
-                    fn rows(&self) -> ::alloc::vec::Vec<Self::T> {
+                    fn rows(&self) -> Vec<Self::T> {
                         // Create the rows from columns
                         let elems = [ #( self.#col_vec_idents.len(), )* ];
                         let len = elems[0];
-                        let mut rows = ::alloc::vec::Vec::with_capacity(len);
+                        let mut rows = Vec::with_capacity(len);
                         for i in 0..len {
                             rows.push(#ident {
                                 #( #col_idents: unsafe { *self.#col_vec_idents.get_unchecked(i) }, )*
